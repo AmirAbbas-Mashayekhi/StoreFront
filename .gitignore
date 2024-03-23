@@ -1,0 +1,7 @@
+*.pyc
+/media/
+/static/
+*.log
+/.idea/
+/.vscode/
+/staticfiles/
