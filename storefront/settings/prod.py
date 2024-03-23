@@ -10,9 +10,9 @@ ALLOWED_HOSTS = ["*"]
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "railway",
-        "HOST": "monorail.proxy.rlwy.net",
-        "USER": "root",
-        "PASSWORD": "OYzPivwVAKdjNXAJGESjSNtrIljBIQsp",
+        "NAME": "storefront-prod",
+        "HOST": "AmirAbbasMashayekhi.mysql.pythonanywhere-services.com",
+        "USER": "AmirAbbasMashaye",
+        "PASSWORD": "KgbT1384cout;",
     }
 }
