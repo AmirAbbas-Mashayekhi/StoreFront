@@ -10,9 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
-from fileinput import filename
+from os import getenv
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv 
+
+# Load local .env
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -20,20 +24,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-DEBUG = False
+DEBUG = True
 
-SECRET_KEY = "django-insecure-hs6j037urx6iav+7#10%-vu4l4f5@@-1_zo)oft4g7$vf2$jmp"
+SECRET_KEY = getenv('DJANGO_SECRET_KEY')
 
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ['localhost']
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "storefront-prod",
-        "HOST": "AmirAbbasMashayekhi.mysql.pythonanywhere-services.com",
-        "USER": "AmirAbbasMashaye",
-        "PASSWORD": "KgbT1384cout;",
+        "NAME": getenv("MYSQL_DATABASE"),
+        "HOST": "db",
+        "USER": getenv("MYSQL_USER"),
+        "PASSWORD": getenv("MYSQL_PASSWORD"),
     }
 }
 
@@ -62,7 +66,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    # "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -74,8 +78,8 @@ MIDDLEWARE = [
 ]
 
 
-# if DEBUG:
-#     MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]
+if DEBUG:
+    MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]
 
 INTERNAL_IPS = [
     # ...
@@ -184,22 +188,22 @@ SIMPLE_JWT = {"AUTH_HEADER_TYPES": ("JWT",), "ACCESS_TOKEN_LIFETIME": timedelta(
 
 CELERY_BROKER_URL = "redis://localhost:6379/1"
 
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {
-        "console": {"class": "logging.StreamHandler"},
-        "file": {
-            "class": "logging.FileHandler",
-            "filename": "general.log",
-            "formatter": "verbose",
-        },
-    },
-    "loggers": {"": {"handlers": ["console", "file"], "level": "INFO"}},
-    "formatters": {
-        "verbose": {
-            "format": "{asctime} ({levelname}) - {name} - {message}",
-            "style": "{",
-        }
-    },
-}
+# LOGGING = {
+#     "version": 1,
+#     "disable_existing_loggers": False,
+#     "handlers": {
+#         "console": {"class": "logging.StreamHandler"},
+#         "file": {
+#             "class": "logging.FileHandler",
+#             "filename": "logs/general.log",
+#             "formatter": "verbose",
+#         },
+#     },
+#     "loggers": {"": {"handlers": ["console", "file"], "level": "INFO"}},
+#     "formatters": {
+#         "verbose": {
+#             "format": "{asctime} ({levelname}) - {name} - {message}",
+#             "style": "{",
+#         }
+#     },
+# }
