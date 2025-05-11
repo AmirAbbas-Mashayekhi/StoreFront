@@ -19,6 +19,7 @@ celery = "*"
 flower = "*"
 whitenoise = "*"
 gunicorn = "*"
+python-dotenv = "*"
 
 [dev-packages]
 pytest = "*"
