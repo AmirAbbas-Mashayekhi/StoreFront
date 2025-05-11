@@ -119,7 +119,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.PROTECT, related_name="orderitems"
     )
-    quantity = models.PositiveSmallIntegerField()
+    quantity = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
     unit_price = models.DecimalField(max_digits=6, decimal_places=2)
 
 
@@ -147,6 +147,8 @@ class Review(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="reviews"
     )
-    name = models.CharField(max_length=255)
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="reviews"
+    )
     description = models.TextField()
     date = models.DateField(auto_now_add=True)
