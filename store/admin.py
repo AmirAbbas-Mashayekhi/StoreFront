@@ -12,13 +12,20 @@ class InventoryFilter(admin.SimpleListFilter):
     parameter_name = "inventory"
 
     def lookups(self, request, model_admin):
-        return [("<10", "Low")]
+        return [
+            ("<10", "Low (<10)"),
+            (">=100", "High (≥100)"),
+        ]
 
     def queryset(self, request, queryset: QuerySet):
         if self.value() == "<10":
             return queryset.filter(inventory__lt=10)
+        if self.value() == ">=100":
+            return queryset.filter(inventory__gte=100)
+        return queryset
 
 
+# TODO: Permission issue with /media
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     readonly_fields = ["thumbnail"]
