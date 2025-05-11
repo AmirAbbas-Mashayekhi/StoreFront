@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from .signals import order_created
 from .models import (
@@ -26,10 +27,13 @@ class CollectionSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = ["id", "date", "name", "description"]
+        fields = ["id", "date", "customer", "description"]
+
+    read_only_fields = ["customer"]
 
     def create(self, validated_data):
         product_id = self.context["product_id"]
+        customer = get_object_or_404(Customer, user=self.context["user"])
         return Review.objects.create(product_id=product_id, **validated_data)
 
 
