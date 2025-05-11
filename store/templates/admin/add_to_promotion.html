@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <form method="post">{% csrf_token %}
+    {# Promotion chooser #}
+    {{ form.as_p }}
+
+    <input type="hidden"
+           name="action"
+           value="{{ action_name }}">
+
+    {% for obj in queryset %}
+      <input type="hidden"
+             name="{{ action_checkbox_name }}"
+             value="{{ obj.pk }}">
+    {% endfor %}
+
+    <button type="submit" name="apply" style="padding: 5px; border: 2px rgb(219, 217, 217) solid; border-radius: .3rem; font-weight: bold;">Apply Promotion</button>
+  </form>
+
+  <br>
+
+  <hr/>
+  <br>
+  <h2>Products to update:</h2>
+  <ul>
+    {% for obj in queryset %}
+      <li>{{ obj.title }}</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

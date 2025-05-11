@@ -1,8 +1,12 @@
+from decimal import Decimal
 from django.contrib import admin, messages
 from django.db.models.aggregates import Count
 from django.db.models.query import QuerySet
+from django.shortcuts import redirect, render
 from django.utils.html import format_html, urlencode
 from django.urls import reverse
+
+from store.forms import PromotionSelectionForm
 from . import models
 from .models import ProductImage
 
@@ -40,7 +44,7 @@ class ProductImageInline(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     autocomplete_fields = ["collection", "promotions"]
     prepopulated_fields = {"slug": ["title"]}
-    actions = ["clear_inventory"]
+    actions = ["clear_inventory", "add_to_promotion"]
     inlines = [ProductImageInline]
     list_display = ["title", "unit_price", "inventory_status", "collection_title"]
     list_editable = ["unit_price"]
@@ -54,9 +58,7 @@ class ProductAdmin(admin.ModelAdmin):
 
     @admin.display(ordering="inventory")
     def inventory_status(self, product):
-        if product.inventory < 10:
-            return "Low"
-        return "OK"
+        return "Low" if product.inventory < 10 else "OK"
 
     @admin.action(description="Clear inventory")
     def clear_inventory(self, request, queryset):
@@ -64,8 +66,43 @@ class ProductAdmin(admin.ModelAdmin):
         self.message_user(
             request,
             f"{updated_count} products were successfully updated.",
-            messages.ERROR,
+            level=messages.SUCCESS,
         )
+
+    @admin.action(description="Add products to a promotion")
+    def add_to_promotion(self, request, queryset):
+        if "apply" in request.POST:
+            form = PromotionSelectionForm(request.POST)
+            if form.is_valid():
+                promo = form.cleaned_data["promotion"]
+                for p in queryset:
+                    if promo not in p.promotions.all():
+                        p.promotions.add(promo)
+                        p.unit_price = p.unit_price - (
+                            p.unit_price * Decimal(promo.discount)
+                        )
+                        p.save()
+                self.message_user(
+                    request,
+                    f"Added {queryset.count()} products to promotion '{promo}'.",
+                    level=messages.SUCCESS,
+                )
+                return redirect(request.get_full_path())
+        else:
+            form = PromotionSelectionForm()
+
+        # capture the original action name
+        action_name = request.POST.get("action", "add_to_promotion")
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": f"Select a promotion to apply",
+            "queryset": queryset,
+            "form": form,
+            "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
+            "action_name": action_name,
+        }
+        return render(request, "admin/add_to_promotion.html", context)
 
     class Media:
         css = {"all": ["store/styles.css"]}
