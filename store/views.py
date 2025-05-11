@@ -85,12 +85,16 @@ class CollectionViewSet(ModelViewSet):
 
 class ReviewViewSet(ModelViewSet):
     serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Review.objects.filter(product_id=self.kwargs["product_pk"])
 
     def get_serializer_context(self):
-        return {"product_id": self.kwargs["product_pk"]}
+        return {
+            "product_id": self.kwargs["product_pk"],
+            "user": self.request.user,
+        }
 
 
 class CartViewSet(
