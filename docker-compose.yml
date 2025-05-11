@@ -1,0 +1,75 @@
+services:
+  db:
+    image: mysql:8.1
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - storefront_db:/var/lib/mysql
+    restart: always
+
+  redis:
+    image: redis:6.2
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DEBUG: 1
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DB_HOST: db
+      DJANGO_DB_PORT: 3306
+      DJANGO_DB_NAME: ${MYSQL_DATABASE}
+      DJANGO_DB_USER: ${MYSQL_USER}
+      DJANGO_DB_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    volumes:
+      - .:/app
+
+  celery:
+    build: .
+    command: celery -A storefront worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  # celery-beat:
+  #   build: .
+  #   command: celery -A your_project_name beat --loglevel=info
+  #   volumes:
+  #     - .:/app
+  #   depends_on:
+  #     - redis
+  #     - db
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+  # flower:
+  #   image: mher/flower
+  #   command: celery -A your_project_name flower
+  #   ports:
+  #     - "5555:5555"
+  #   depends_on:
+  #     - redis
+  #     - db
+  #   environment:
+  #     - CELERY_BROKER_URL=redis://redis:6379/0
+
+volumes:
+  storefront_db:
