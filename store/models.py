@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import ExpressionWrapper, DecimalField, F
 from uuid import uuid4
 
 from store.validators import validate_file_size
@@ -12,6 +13,36 @@ from store.validators import validate_file_size
 class Promotion(models.Model):
     description = models.CharField(max_length=255)
     discount = models.FloatField()
+    active = models.BooleanField(default=True)
+
+
+    def save(self, *args, **kwargs):
+        # Fetch old state (only if updating an existing record)
+        old_active = None
+        if self.pk:
+            old_active = Promotion.objects.values_list("active", flat=True).get(pk=self.pk)
+        
+        # Perform the regular save
+        super().save(*args, **kwargs)
+        
+        # If we just went from True → False, revert linked products’ prices
+        if old_active and not self.active:
+            undo_factor = 1 / (1 - self.discount)
+            expr = ExpressionWrapper(
+                F("unit_price") * undo_factor,
+                output_field=DecimalField()
+            )
+            # Bulk-update via the M2M reverse relation
+            self.products.update(unit_price=expr)
+        # If we just went from False -> True, apply discount to linked products
+        else:
+            discount_factor = 1 - self.discount
+            expr = ExpressionWrapper(
+                F("unit_price") * discount_factor,
+                output_field=DecimalField()
+            )
+            # Bulk-update via the M2M reverse relation
+            self.products.update(unit_price=expr)
 
     def __str__(self) -> str:
         return self.description

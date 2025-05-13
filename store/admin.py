@@ -74,36 +74,33 @@ class ProductAdmin(admin.ModelAdmin):
     def add_to_promotion(self, request, queryset):
         # Bind the form (either empty or with POST data)
         form = PromotionSelectionForm(request.POST or None)
-        
 
         # If the admin clicked “Apply” and the form is valid…
         if request.POST.get("apply") and form.is_valid():
             promo = form.cleaned_data["promotion"]
-            
+
             # Build a discount expression: unit_price * (1 – promo.discount)
             discount_factor = Decimal(1) - Decimal(promo.discount)
             price_expr = ExpressionWrapper(
-                F('unit_price') * discount_factor,
-                output_field=DecimalField()
+                F("unit_price") * discount_factor, output_field=DecimalField()
             )
-            
+
             # Filter out products already in this promotion
             to_link = queryset.exclude(promotions=promo)
-            
+
             # Bulk-update all their prices in one SQL query
             to_link.update(unit_price=price_expr)
-            
+
             # Prepare through-model rows for the M2M link
-            product_ids = list(to_link.values_list('pk', flat=True))
+            product_ids = list(to_link.values_list("pk", flat=True))
             through = models.Product.promotions.through
             m2m_objs = [
-                through(product_id=pid, promotion_id=promo.pk)
-                for pid in product_ids
+                through(product_id=pid, promotion_id=promo.pk) for pid in product_ids
             ]
-            
+
             # Bulk-insert all M2M rows at once, skipping duplicates
             through.objects.bulk_create(m2m_objs, ignore_conflicts=True)
-            
+
             # Show a success message and reload the page
             self.message_user(
                 request,
@@ -111,15 +108,15 @@ class ProductAdmin(admin.ModelAdmin):
                 level=messages.SUCCESS,
             )
             return redirect(request.get_full_path())
-        
+
         # Otherwise, render the intermediate form page
         context = {
             **self.admin_site.each_context(request),
-            'title': "Select a promotion to apply",
-            'queryset': queryset,
-            'form': form,
-            'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME,
-            'action_name': request.POST.get('action', 'add_to_promotion'),
+            "title": "Select a promotion to apply",
+            "queryset": queryset,
+            "form": form,
+            "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
+            "action_name": request.POST.get("action", "add_to_promotion"),
         }
         return render(request, "admin/add_to_promotion.html", context)
 
@@ -187,5 +184,6 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(models.Promotion)
 class PromotionAdmin(admin.ModelAdmin):
-    list_display = ["description", "discount"]
+    list_display = ["description", "discount", "active"]
+    list_editable = ["active"]
     search_fields = ["description"]
