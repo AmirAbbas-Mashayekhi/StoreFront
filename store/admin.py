@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.contrib import admin, messages
 from django.db.models.aggregates import Count
 from django.db.models.query import QuerySet
+from django.db.models import ExpressionWrapper, DecimalField, F
 from django.shortcuts import redirect, render
 from django.utils.html import format_html, urlencode
 from django.urls import reverse
@@ -69,38 +70,56 @@ class ProductAdmin(admin.ModelAdmin):
             level=messages.SUCCESS,
         )
 
-    @admin.action(description="Add products to a promotion")
+    @admin.action(description="Add products to a promotion (bulk-optimized)")
     def add_to_promotion(self, request, queryset):
-        if "apply" in request.POST:
-            form = PromotionSelectionForm(request.POST)
-            if form.is_valid():
-                promo = form.cleaned_data["promotion"]
-                for p in queryset:
-                    if promo not in p.promotions.all():
-                        p.promotions.add(promo)
-                        p.unit_price = p.unit_price - (
-                            p.unit_price * Decimal(promo.discount)
-                        )
-                        p.save()
-                self.message_user(
-                    request,
-                    f"Added {queryset.count()} products to promotion '{promo}'.",
-                    level=messages.SUCCESS,
-                )
-                return redirect(request.get_full_path())
-        else:
-            form = PromotionSelectionForm()
+        # Bind the form (either empty or with POST data)
+        form = PromotionSelectionForm(request.POST or None)
+        
 
-        # capture the original action name
-        action_name = request.POST.get("action", "add_to_promotion")
-
+        # If the admin clicked “Apply” and the form is valid…
+        if request.POST.get("apply") and form.is_valid():
+            promo = form.cleaned_data["promotion"]
+            
+            # Build a discount expression: unit_price * (1 – promo.discount)
+            discount_factor = Decimal(1) - Decimal(promo.discount)
+            price_expr = ExpressionWrapper(
+                F('unit_price') * discount_factor,
+                output_field=DecimalField()
+            )
+            
+            # Filter out products already in this promotion
+            to_link = queryset.exclude(promotions=promo)
+            
+            # Bulk-update all their prices in one SQL query
+            to_link.update(unit_price=price_expr)
+            
+            # Prepare through-model rows for the M2M link
+            product_ids = list(to_link.values_list('pk', flat=True))
+            through = models.Product.promotions.through
+            m2m_objs = [
+                through(product_id=pid, promotion_id=promo.pk)
+                for pid in product_ids
+            ]
+            
+            # Bulk-insert all M2M rows at once, skipping duplicates
+            through.objects.bulk_create(m2m_objs, ignore_conflicts=True)
+            
+            # Show a success message and reload the page
+            self.message_user(
+                request,
+                f"Applied promotion to {len(product_ids)} products.",
+                level=messages.SUCCESS,
+            )
+            return redirect(request.get_full_path())
+        
+        # Otherwise, render the intermediate form page
         context = {
             **self.admin_site.each_context(request),
-            "title": f"Select a promotion to apply",
-            "queryset": queryset,
-            "form": form,
-            "action_checkbox_name": admin.helpers.ACTION_CHECKBOX_NAME,
-            "action_name": action_name,
+            'title': "Select a promotion to apply",
+            'queryset': queryset,
+            'form': form,
+            'action_checkbox_name': admin.helpers.ACTION_CHECKBOX_NAME,
+            'action_name': request.POST.get('action', 'add_to_promotion'),
         }
         return render(request, "admin/add_to_promotion.html", context)
 
