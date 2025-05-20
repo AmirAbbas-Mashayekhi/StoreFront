@@ -80,7 +80,7 @@ class ProductAdmin(admin.ModelAdmin):
             promo = form.cleaned_data["promotion"]
 
             # Build a discount expression: unit_price * (1 – promo.discount)
-            discount_factor = Decimal(1) - Decimal(promo.discount)
+            discount_factor = Decimal(1) - promo.discount
             price_expr = ExpressionWrapper(
                 F("unit_price") * discount_factor, output_field=DecimalField()
             )
