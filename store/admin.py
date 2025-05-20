@@ -49,7 +49,7 @@ class ProductAdmin(admin.ModelAdmin):
     inlines = [ProductImageInline]
     list_display = ["title", "unit_price", "inventory_status", "collection_title"]
     list_editable = ["unit_price"]
-    list_filter = ["collection", "last_update", InventoryFilter]
+    list_filter = ["collection", "last_update", "promotions", InventoryFilter]
     list_per_page = 10
     list_select_related = ["collection"]
     search_fields = ["title"]
@@ -184,6 +184,18 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(models.Promotion)
 class PromotionAdmin(admin.ModelAdmin):
-    list_display = ["description", "discount", "active"]
+    list_display = ["description", "discount", "active", "products_count"]
     list_editable = ["active"]
     search_fields = ["description"]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(products_count=Count("products"))
+
+    @admin.display(ordering="products_count")
+    def products_count(self, promotion):
+        url = (
+            reverse("admin:store_product_changelist")
+            + "?"
+            + urlencode({"promotions__id": str(promotion.id)})
+        )
+        return format_html("<a href={}>{}<a/>", url, promotion.products_count)
