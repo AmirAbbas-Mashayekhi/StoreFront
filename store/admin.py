@@ -1,4 +1,6 @@
+# Standard Lib
 from decimal import Decimal
+# Django
 from django.contrib import admin, messages
 from django.db.models.aggregates import Count
 from django.db.models.query import QuerySet
@@ -6,7 +8,9 @@ from django.db.models import ExpressionWrapper, DecimalField, F
 from django.shortcuts import redirect, render
 from django.utils.html import format_html, urlencode
 from django.urls import reverse
-
+# Third-party apps
+from unfold.admin import ModelAdmin
+# Project modules
 from store.forms import PromotionSelectionForm
 from . import models
 from .models import ProductImage
@@ -42,7 +46,7 @@ class ProductImageInline(admin.TabularInline):
 
 
 @admin.register(models.Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(ModelAdmin):
     autocomplete_fields = ["collection", "promotions"]
     prepopulated_fields = {"slug": ["title"]}
     actions = ["clear_inventory", "add_to_promotion"]
@@ -125,7 +129,7 @@ class ProductAdmin(admin.ModelAdmin):
 
 
 @admin.register(models.Collection)
-class CollectionAdmin(admin.ModelAdmin):
+class CollectionAdmin(ModelAdmin):
     autocomplete_fields = ["featured_product"]
     list_display = ["title", "products_count"]
     search_fields = ["title"]
@@ -146,7 +150,7 @@ class CollectionAdmin(admin.ModelAdmin):
 
 
 @admin.register(models.Customer)
-class CustomerAdmin(admin.ModelAdmin):
+class CustomerAdmin(ModelAdmin):
     list_display = ["first_name", "last_name", "membership", "orders"]
     list_editable = ["membership"]
     list_per_page = 10
@@ -176,14 +180,14 @@ class OrderItemInline(admin.TabularInline):
 
 
 @admin.register(models.Order)
-class OrderAdmin(admin.ModelAdmin):
+class OrderAdmin(ModelAdmin):
     autocomplete_fields = ["customer"]
     inlines = [OrderItemInline]
     list_display = ["id", "placed_at", "customer"]
 
 
 @admin.register(models.Promotion)
-class PromotionAdmin(admin.ModelAdmin):
+class PromotionAdmin(ModelAdmin):
     list_display = ["description", "discount", "active", "products_count"]
     list_editable = ["active"]
     search_fields = ["description"]

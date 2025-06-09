@@ -20,6 +20,7 @@ flower = "*"
 whitenoise = "*"
 gunicorn = "*"
 python-dotenv = "*"
+django-unfold = "*"
 
 [dev-packages]
 pytest = "*"
