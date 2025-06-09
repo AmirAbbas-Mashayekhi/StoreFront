@@ -10,6 +10,8 @@ from uuid import uuid4
 
 from store.validators import validate_file_size
 
+from . import helpers
+
 
 class Promotion(models.Model):
     description = models.CharField(max_length=255)
@@ -23,28 +25,43 @@ class Promotion(models.Model):
     def save(self, *args, **kwargs):
         # Fetch old state (only if updating an existing record)
         old_active = None
+        old_discount = None
         if self.pk:
             old_active = Promotion.objects.values_list("active", flat=True).get(
                 pk=self.pk
             )
+            old_discount = Promotion.objects.get(pk=self.pk).discount
+
 
         # Perform the regular save
         super().save(*args, **kwargs)
 
+        # Check if the discount factor has changed on an active promotion
+        if old_discount is not None and old_discount != self.discount and self.active:
+            # 1. First we undo the previously applied discount
+            #    Revert Discount formula: 1 / (1 - self.discount)
+            # 2. Then we apply the new discount
+            #    Apply discount formula: 1 - self.discount
+            undo_factor = Decimal("1") / (Decimal("1") - old_discount)
+            apply_factor = Decimal("1") - self.discount
+            total_factor = undo_factor * apply_factor
+            expr = helpers.discount_expression_wrapper(factor=total_factor)
+
+            # Bulk-update via the M2M reverse relation
+            self.products.update(unit_price=expr)
+
         # If we just went from True → False, revert linked products’ prices
-        if old_active and not self.active:
-            undo_factor = 1 / (1 - self.discount)
-            expr = ExpressionWrapper(
-                F("unit_price") * undo_factor, output_field=DecimalField()
-            )
+        elif old_active and not self.active:
+            undo_factor = Decimal("1") / (Decimal("1") - self.discount)
+            expr = helpers.discount_expression_wrapper(factor=undo_factor)
+
             # Bulk-update via the M2M reverse relation
             self.products.update(unit_price=expr)
         # If we just went from False -> True, apply discount to linked products
-        else:
-            discount_factor = 1 - self.discount
-            expr = ExpressionWrapper(
-                F("unit_price") * discount_factor, output_field=DecimalField()
-            )
+        elif not old_active and self.active:
+            discount_factor = Decimal("1") - self.discount
+            expr = helpers.discount_expression_wrapper(factor=discount_factor)
+
             # Bulk-update via the M2M reverse relation
             self.products.update(unit_price=expr)
 
