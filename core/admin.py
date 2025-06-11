@@ -2,6 +2,9 @@ from store.models import Product
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.contenttypes.admin import GenericTabularInline
+
+from unfold.admin import TabularInline
+
 from store.admin import ProductAdmin, ProductImageInline
 from tags.models import TaggedItem
 from .models import User
@@ -17,13 +20,22 @@ class UserAdmin(BaseUserAdmin):
     )
 
 
+class TaggedItemGenericInline(GenericTabularInline, TabularInline):
+    model = TaggedItem
+    ct_field = 'content_type'
+    fk_field = 'object_id'
+    template = "admin/edit_inline/tabular.html"
+    extra = 1
+
+
+
 class TagInline(GenericTabularInline):
     autocomplete_fields = ['tag']
     model = TaggedItem
 
 
 class CustomProductAdmin(ProductAdmin):
-    inlines = [TagInline, ProductImageInline]
+    inlines = [TaggedItemGenericInline, ProductImageInline]
 
 
 admin.site.unregister(Product)

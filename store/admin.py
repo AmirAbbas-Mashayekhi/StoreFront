@@ -1,5 +1,6 @@
 # Standard Lib
 from decimal import Decimal
+
 # Django
 from django.contrib import admin, messages
 from django.db.models.aggregates import Count
@@ -8,8 +9,11 @@ from django.db.models import ExpressionWrapper, DecimalField, F
 from django.shortcuts import redirect, render
 from django.utils.html import format_html, urlencode
 from django.urls import reverse
+
 # Third-party apps
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
+from unfold.decorators import action
+
 # Project modules
 from store.forms import PromotionSelectionForm
 from . import models
@@ -35,7 +39,7 @@ class InventoryFilter(admin.SimpleListFilter):
 
 
 # TODO: Permission issue with /media
-class ProductImageInline(admin.TabularInline):
+class ProductImageInline(TabularInline):
     model = ProductImage
     readonly_fields = ["thumbnail"]
 
@@ -65,7 +69,7 @@ class ProductAdmin(ModelAdmin):
     def inventory_status(self, product):
         return "Low" if product.inventory < 10 else "OK"
 
-    @admin.action(description="Clear inventory")
+    @action(description="Clear inventory", icon="person")
     def clear_inventory(self, request, queryset):
         updated_count = queryset.update(inventory=0)
         self.message_user(
@@ -74,7 +78,7 @@ class ProductAdmin(ModelAdmin):
             level=messages.SUCCESS,
         )
 
-    @admin.action(description="Add products to a promotion (bulk-optimized)")
+    @action(description="Add products to a promotion (bulk-optimized)")
     def add_to_promotion(self, request, queryset):
         # Bind the form (either empty or with POST data)
         form = PromotionSelectionForm(request.POST or None)
@@ -171,7 +175,7 @@ class CustomerAdmin(ModelAdmin):
         return super().get_queryset(request).annotate(orders_count=Count("order"))
 
 
-class OrderItemInline(admin.TabularInline):
+class OrderItemInline(TabularInline):
     autocomplete_fields = ["product"]
     min_num = 1
     max_num = 10
